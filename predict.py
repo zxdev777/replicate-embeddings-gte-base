@@ -4,11 +4,12 @@ from typing import List
 from cog import BasePredictor, Input, BaseModel
 from sentence_transformers import SentenceTransformer
 
+class Item(BaseModel):
+    text: str
+    embedding: List[float]
 
 class Output(BaseModel):
-    vectors: List[float]
-    text: str
-
+    items: List[Item]
 
 class Predictor(BasePredictor):
     def setup(self) -> None:
@@ -16,12 +17,21 @@ class Predictor(BasePredictor):
         self.model = SentenceTransformer('thenlper/gte-base')
 
     def predict(
-        self,
-        text: str = Input(description="Text string to embed"),
+            self,
+            text: str = Input(description="Text strings to embed (separated by newlines)"),
     ) -> Output:
-        """Run a single prediction on the model"""
+        """Run prediction on text with lines separated by newlines"""
 
-        # Embed the text
-        embeddings = self.model.encode([text])
+        # Split the input text by newlines into a list of text strings
+        texts = text.split("\n")
 
-        return Output(vectors=embeddings[0].tolist(), text=text)
+        # Remove empty strings
+        texts = [t.strip() for t in texts if t.strip()]
+
+        # Embed the texts
+        embeddings = self.model.encode(texts)
+
+        # Create a list of Item objects, each containing input and embedding
+        items = [Item(text=text, embedding=embedding.tolist()) for text, embedding in zip(texts, embeddings)]
+
+        return Output(items=items)
